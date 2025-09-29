@@ -1,0 +1,162 @@
+// 전역 변수: 차트 객체와 전체 데이터를 저장할 변수
+let cctvData = {};
+let cctvChart = null;
+
+// 파이 그래프에 사용할 색상 팔레트
+const backgroundColors = [
+    '#007bff', // 파랑
+    '#28a745', // 녹색
+    '#ffc107', // 노랑
+    '#dc3545', // 빨강
+    '#6f42c1'  // 보라
+];
+const borderColors = [
+    '#0056b3',
+    '#1e7e34',
+    '#d39e00',
+    '#b02a37',
+    '#5a33a3'
+];
+
+/**
+ * 1. 데이터를 불러오고 초기화 작업을 수행하는 함수
+ */
+async function initialize() {
+    try {
+        // cctv_data.json 파일에서 데이터를 불러옵니다.
+        const response = await fetch('cctv_data.json');
+        cctvData = await response.json();
+        
+        // 드롭다운 메뉴에 자치구 목록을 채웁니다.
+        populateDistrictSelect();
+        
+        // 초기 그래프를 그립니다 (첫 번째 자치구로)
+        const initialDistrict = document.getElementById('district-select').value;
+        drawChart(initialDistrict);
+
+    } catch (error) {
+        console.error('데이터 로딩 중 오류 발생:', error);
+        alert('CCTV 데이터를 불러오는 데 실패했습니다.');
+    }
+}
+
+/**
+ * 2. 드롭다운 메뉴에 자치구 목록을 채우는 함수
+ */
+function populateDistrictSelect() {
+    const selectElement = document.getElementById('district-select');
+    const districts = Object.keys(cctvData).sort(); // 자치구 이름을 오름차순으로 정렬
+    
+    // 기본 안내 메시지 옵션을 추가합니다.
+    const defaultOption = document.createElement('option');
+    defaultOption.value = "";
+    defaultOption.textContent = "자치구를 선택하세요";
+    defaultOption.disabled = true;
+    defaultOption.selected = true;
+    selectElement.appendChild(defaultOption);
+
+    // 각 자치구 옵션을 추가합니다.
+    districts.forEach(district => {
+        const option = document.createElement('option');
+        option.value = district;
+        option.textContent = district;
+        selectElement.appendChild(option);
+    });
+
+    // 사용자가 첫 번째 자치구를 선택하도록 selected를 해제합니다.
+    defaultOption.selected = false;
+    selectElement.value = districts[0]; // 자동으로 첫 번째 구를 선택
+    
+    // 드롭다운 변경 시 차트 갱신 이벤트 리스너를 추가합니다.
+    selectElement.addEventListener('change', (event) => {
+        drawChart(event.target.value);
+    });
+}
+
+/**
+ * 3. 선택된 자치구의 데이터를 기반으로 차트를 그리거나 업데이트하는 함수
+ * @param {string} district - 선택된 자치구 이름
+ */
+function drawChart(district) {
+    if (!district || !cctvData[district]) {
+        return; // 유효하지 않은 선택이면 아무것도 하지 않음
+    }
+
+    // 선택된 자치구의 CCTV 설치목적별 데이터
+    const dataForDistrict = cctvData[district];
+    
+    // 차트 레이블(설치목적)과 실제 데이터(카메라 개수) 추출
+    const labels = Object.keys(dataForDistrict);
+    const dataValues = Object.values(dataForDistrict);
+    
+    // Chart.js에 전달할 데이터 객체 구성
+    const chartData = {
+        labels: labels,
+        datasets: [{
+            label: '카메라 대수',
+            data: dataValues,
+            backgroundColor: backgroundColors.slice(0, labels.length), // 필요한 만큼 색상 사용
+            borderColor: borderColors.slice(0, labels.length),
+            borderWidth: 1
+        }]
+    };
+
+    const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false, // .chart-area의 크기에 맞춰 크기 조절
+        plugins: {
+            legend: {
+                position: 'top', // 범례 위치
+                labels: {
+                    font: {
+                        size: 14 // 범례 글자 크기
+                    }
+                }
+            },
+            title: {
+                display: true,
+                text: `${district} CCTV 설치목적별 현황`,
+                font: {
+                    size: 18
+                }
+            },
+            // 요구사항: 툴팁 기능 활성화 및 커스터마이징
+            tooltip: {
+                callbacks: {
+                    // 툴팁에 표시될 레이블(이름: 개수) 설정
+                    label: function(context) {
+                        let label = context.label || ''; // 설치 목적
+                        if (label) {
+                            label += ': ';
+                        }
+                        // 데이터 값 (카메라 대수)
+                        label += new Intl.NumberFormat('ko-KR').format(context.raw) + '대';
+                        return label;
+                    },
+                    // 툴팁 제목에 총합 비율을 추가할 수도 있지만, 여기서는 단순하게 유지합니다.
+                },
+                bodyFont: {
+                    size: 14
+                }
+            }
+        }
+    };
+
+    // 차트 인스턴스가 이미 존재하면 데이터를 업데이트합니다.
+    if (cctvChart) {
+        cctvChart.data = chartData;
+        cctvChart.options.plugins.title.text = `${district} CCTV 설치목적별 현황`;
+        cctvChart.update();
+    } else {
+        // 차트 인스턴스가 없으면 새로 생성합니다.
+        const ctx = document.getElementById('cctv-pie-chart').getContext('2d');
+        cctvChart = new Chart(ctx, {
+            type: 'pie', // 파이 그래프 타입
+            data: chartData,
+            options: chartOptions
+        });
+    }
+}
+
+// 스크립트가 로드되면 초기화 함수를 실행합니다.
+initialize();

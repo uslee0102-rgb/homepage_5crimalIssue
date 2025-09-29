@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>자치구별 CCTV 설치목적 파이 그래프</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>서울시 자치구별 CCTV 설치 현황 분석</h1>
+
+        <label for="district-select">자치구 선택:</label>
+        <select id="district-select">
+            </select>
+
+        <div class="chart-area">
+            <canvas id="cctv-pie-chart"></canvas>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
